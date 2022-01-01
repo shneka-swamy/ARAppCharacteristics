@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">ProfileCharacteristics</string>
+    <string name="number_files">Number of Files</string>
+    <string name="del_button">Delete Existing Files</string>
+    <string name="number_phones">Number of Phones</string>
+    <string name="submit"> Submit the selection made</string>
+    <string name="file_name">File Name</string>
+    <string name="Server">Server</string>
+    <string name="Client">Client</string>
+    <string name="default_file">Default File Name</string>
+    <string name="IP_Address">Default IP address</string>
+    <string name="Host_num">Default Host Number</string>
+    <string name="host_text">Host Number</string>
+    <string name="ip_addr">IP Address</string>
+
+    <string-array name ="selection">
+        <item>Network Discovery</item>>
+        <item>Use IP provided</item>
+    </string-array>
+
+</resources>

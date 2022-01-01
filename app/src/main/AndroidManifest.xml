@@ -1,0 +1,72 @@
+<?xml version="1.0"  encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    package="com.example.profilecharacteristics">
+    <uses-permission
+        android:required="true"
+        android:name="android.permission.ACCESS_WIFI_STATE"/>
+    <uses-permission
+        android:required="true"
+        android:name="android.permission.INTERNET"/>
+    <uses-permission
+        android:required="true"
+        android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>
+    <uses-permission
+        android:required="true"
+        android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <uses-permission android:name="android.permission.BATTERY_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+
+    <queries>
+        <package android:name="com.arexperiments.justaline"/>
+        <package android:name="com.google.ar.core.codelab.cloudanchor"/>
+        <package android:name="com.example.p2pconnection"/>
+    </queries>
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ProfileCharacteristics">
+        <!-- <service android:enabled="true" android:name=".YourService"></service> -->
+
+        <service android:name=".YourService"
+            android:exported="true"
+            android:label="VR Listener service"
+            android:permission="android.permission.BIND_VR_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.vr.VrListenerService" />
+            </intent-filter>
+        </service>
+
+        <activity android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.ACTION_POWER_CONNECTED"/>
+                <action android:name="android.intent.action.ACTION_POWER_DISCONNECTED"/>
+
+            </intent-filter>
+        </activity>
+
+        <!-- This activity is created for enabling multiple phone characteristics -->
+        <activity android:name=".MultiplePhone"
+            android:exported="true">
+        </activity>
+
+    </application>
+
+</manifest>
