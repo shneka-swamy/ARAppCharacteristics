@@ -25,6 +25,7 @@ import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
 
+// TODO: Must remove the NTP time from the list
 class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
     var context: Context, filename: String?, service: Constants.Type,
     networkQueue: NetworkQueue?
@@ -42,7 +43,6 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
     val networkQueue: NetworkQueue?
 
     // These variables are created for detecting the bandwidth gap in latency.
-    var resultTime = Stack<String>()
     var startTime = Stack<Long>()
     var endTime = Stack<Long>()
     var reqdQueue: MutableList<String> = ArrayList()

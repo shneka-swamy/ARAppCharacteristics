@@ -22,9 +22,19 @@ class MainActivity : AppCompatActivity() {
     var count = 0
     lateinit var selection: Button
     lateinit var list: Array<File>
-    var package_name: String = "com.example.p2pconnection"
+
+    var mlbm: LocalBroadcastManager? = null
+    var mbr: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            if (intent.action == Constants.ACTION.CLOSE_ACTION) finish()
+        }
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        mlbm = LocalBroadcastManager.getInstance(this)
+        val mif = IntentFilter()
+
         super.onCreate(savedInstanceState)
         // The content view is set for file management purpose only
         setContentView(R.layout.activity_main)
@@ -38,7 +48,8 @@ class MainActivity : AppCompatActivity() {
         list = path!!.listFiles()
         for (f in list) {
             val name = f.name
-            if (name.endsWith(".txt")) count++
+            if (name.endsWith(".txt"))
+                count++
         }
         number_files.setText(count.toString())
 
@@ -62,33 +73,15 @@ class MainActivity : AppCompatActivity() {
             }
             // When the characteristics needs only one phone
             else {
-                // Get the name of the file
-                val clientThread = Thread {
-                    val sdf = SimpleDateFormat("yyMMdd_HHmmss", Locale.getDefault())
-                    val date_time = sdf.format(Date())
-                    val default_name = "Trace$date_time.txt"
-                    // Call the method to get the required values
-                    val gv = GetValues<Any?>(
-                        this@MainActivity,default_name,
-                        Constants.Type.SERVER, null
-                    )
-                    val runnable = object: Runnable {
-                        override fun run() {
-                            gv.values(false)
-                        }
-                    }
-                    runnable.run()
-                }
-                clientThread.start()
-                // Launch the app on the back of which this must be run
-                val launchIntent = packageManager.getLaunchIntentForPackage(package_name)
-                    ?: throw RuntimeException("package $package_name should be in queries")
-                val packageManager = this.packageManager
-                if (launchIntent.resolveActivity(packageManager) != null) {
-                    startActivity(launchIntent)
-                } else {
-                    Log.d(TAG, "The package provided is not launchable")
-                }
+                val sdf = SimpleDateFormat("yyMMdd_HHmmss", Locale.getDefault())
+                val date_time = sdf.format(Date())
+                val default_name = "Single$date_time.txt"
+                Log.v(TAG, "Intent for single phone -- calling foreground activity")
+                val mIntent = Intent(this@MainActivity, YourService::class.java)
+                mIntent.action = Constants.ACTION.START_SINGLE
+                mIntent.putExtra("file_name",default_name)
+                startService(mIntent)
+                mlbm!!.registerReceiver(mbr, mif)
             }
         })
     }

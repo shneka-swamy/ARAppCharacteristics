@@ -10,10 +10,7 @@ import android.net.nsd.NsdManager.RegistrationListener
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiManager.MulticastLock
-import android.os.Build
-import android.os.Handler
-import android.os.IBinder
-import android.os.StrictMode
+import android.os.*
 import android.os.StrictMode.ThreadPolicy
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -41,6 +38,7 @@ class YourService : Service() {
     var package_name: String = "com.example.p2pconnection"
     var serverThread: Thread? = null
     var clientThread: Thread? = null
+    var singleThread: Thread? = null
     var socketChannel: SocketChannel? = null
     var serverChannel: SocketChannel? = null
     var client: Client? = null
@@ -256,7 +254,37 @@ class YourService : Service() {
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        handler = Handler(Looper.getMainLooper())
+        Log.v(TAG,"Start command called")
         if (intent != null) {
+            if (intent.action == Constants.ACTION.START_SINGLE){
+                Log.v(TAG, "Starting single phone activity")
+                val file_name = intent.extras!!.getString("file_name")
+
+                singleThread = Thread {// Call the method to get the required values
+                    runnable = object : Runnable {
+                        override fun run() {
+                            Log.v(TAG, "putting data inside")
+                            gv!!.values(false)
+                            if (handler != null) handler!!.postDelayed(
+                                this,
+                                SET_TIMER.toLong()
+                            )
+                        }
+                    }
+                    gv = GetValues<Any?>(
+                        this@YourService, file_name,
+                        Constants.Type.SERVER, null
+                    )
+                    runnable!!.run()
+                }
+                singleThread!!.start()
+                val policy = ThreadPolicy.Builder().permitAll().build()
+                StrictMode.setThreadPolicy(policy)
+                val lbm = LocalBroadcastManager.getInstance(this)
+                lbm.sendBroadcast(Intent(Constants.ACTION.CLOSE_ACTION))
+                startMyOwnForeground()
+            }
             if (intent.action == Constants.ACTION.START_SERVER || intent.action == Constants.ACTION.START_CLIENT) {
                 Log.v(TAG, "Start action called")
                 val file_name = intent.extras!!.getString("file_name")
@@ -382,7 +410,6 @@ class YourService : Service() {
         startForeground(2, notification)
         val launchIntent = packageManager.getLaunchIntentForPackage(package_name)
             ?: throw RuntimeException("package $package_name should be in queries")
-        // TODO: This is used in place of getActivity(), is this fine or must it be changed
         val packageManager = this.packageManager
         if (launchIntent.resolveActivity(packageManager) != null) {
             startActivity(launchIntent)
