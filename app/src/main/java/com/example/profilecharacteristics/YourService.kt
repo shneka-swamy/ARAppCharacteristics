@@ -35,7 +35,7 @@ class YourService : Service() {
     var port_number = 0
     var handler: Handler? = null
     var runnable: Runnable? = null
-    var package_name: String = "com.example.p2pconnection"
+    var package_name: String = "com.google.ar.core.codelab.cloudanchor"//"com.example.p2pconnection"
     var serverThread: Thread? = null
     var clientThread: Thread? = null
     var singleThread: Thread? = null
@@ -179,6 +179,7 @@ class YourService : Service() {
                 Log.e(
                     TAG,
                     "Discovery failed: Error code:$errorCode"
+
                 )
                 nsdManager!!.stopServiceDiscovery(this)
             }
@@ -244,9 +245,11 @@ class YourService : Service() {
     }
 
     fun convertBytes(ip_address: String?): ByteArray {
-        val array = ip_address!!.split("\\.").toTypedArray()
+        Log.v(TAG, "ip address received is $ip_address")
+        val array = ip_address!!.split(".").toTypedArray()
         val result = ByteArray(array.size)
         for (i in array.indices) {
+            Log.v(TAG, "Array received is ${array[i]}")
             result[i] = array[i].toInt().toByte()
         }
         return result

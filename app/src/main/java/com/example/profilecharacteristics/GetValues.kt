@@ -1,3 +1,6 @@
+// The CPU utilisation code is taken from souch -- github
+// The other functionalities are implemented by using the suggestion provided by stack overflow.
+
 package com.example.profilecharacteristics
 
 import android.annotation.SuppressLint
@@ -14,29 +17,29 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import org.apache.commons.net.ntp.NTPUDPClient
 import org.apache.commons.net.ntp.TimeInfo
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.io.PrintWriter
+import java.io.*
 import java.lang.Exception
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.nio.ByteBuffer
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.regex.Pattern
+import kotlin.collections.ArrayList
 
 // TODO: Must remove the NTP time from the list
+// TODO: Must try to remove all warnings.
 class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
-    var context: Context, filename: String?, service: Constants.Type,
+    private var context: Context, filename: String?, service: Constants.Type,
     networkQueue: NetworkQueue?
 ) {
-    var bm: BatteryManager
-    var cm: ConnectivityManager
-    var nc: NetworkCapabilities?
-    var n: Network?
-    var batteryStatus: Intent?
-    var outputStream: FileOutputStream? = null
-    var writer: PrintWriter? = null
+    private var bm: BatteryManager
+    private var cm: ConnectivityManager
+    private var nc: NetworkCapabilities?
+    private var n: Network?
+    private var batteryStatus: Intent?
+    private var outputStream: FileOutputStream? = null
+    private var writer: PrintWriter? = null
     var file: File
     var downstreamPrelim: Long
     var upstreamPrelim: Long
@@ -45,19 +48,23 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
     // These variables are created for detecting the bandwidth gap in latency.
     var startTime = Stack<Long>()
     var endTime = Stack<Long>()
-    var reqdQueue: MutableList<String> = ArrayList()
-    var low_limit = 0f
-    var up_limit = 0f
+    private var reqdQueue: MutableList<String> = ArrayList()
+    private var low_limit = 0f
+    private var up_limit = 0f
     var maximum = 0f
     var movingUp = false
     var movingDown = false
-    var service: Constants.Type
-    var value: Long = 0
+    private var service: Constants.Type
+    private var value: Long = 0
 
     // These are for calculating the difference in time in latency
-    var diffTime: Long
-    var prevTime: Long
-    var currentTime: Long
+    private var diffTime: Long
+    private var prevTime: Long
+    private var currentTime: Long
+    private lateinit var output: IntArray
+    private lateinit var minimumValue: IntArray
+    private lateinit var maximumValue: IntArray
+    private var nCores: Int = 0
 
     // Writes to a file
     fun writeToFile(data: String) {
@@ -78,12 +85,14 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
     }
 
     // Finds the current battery level
-    val batteryLevel: Float
-        get() {
-            val level = batteryStatus!!.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-            val scale = batteryStatus!!.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-            val batteryPct = level * 100 / scale.toFloat()
+    fun batteryLevel(): Int{
+            // This does not change the battery value all time.
+            //val level = batteryStatus!!.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            //val scale = batteryStatus!!.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            //val batteryPct = (level * 100) / scale.toFloat()
+            val batteryPct:Int = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
             writeToFile("Battery Level $batteryPct")
+            Log.v(TAG, "Battery Level is $batteryPct")
             return batteryPct
         }
 
@@ -97,13 +106,9 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
                 .newInstance(context)
             batteryCapacity = Class.forName(POWER_PROFILE_STRING).getMethod("getBatteryCapacity")
                 .invoke(PowerProfile) as Double
-            if (batteryCapacity == null) {
-                Log.e(TAG, "Error in unboxing the class")
-            }
         } catch (e: Exception) {
             e.printStackTrace()
         }
-        assert(batteryCapacity != null)
         return batteryCapacity
     }
 
@@ -128,7 +133,7 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
         }
 
     // Gets the remaining energy level
-    fun getEnergyLevel(batteryLevel: Float) {
+    fun getEnergyLevel(batteryLevel: Int) {
         val energy_left = (getTotalCapacity(context) * (batteryLevel / 100)).toInt()
         // Log.v(TAG,"Battery Capacity - actual"+ energy_left);
         writeToFile("Energy left in mAh $energy_left")
@@ -153,12 +158,13 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
             val down_inter_bandwidth: Long =
                 (down_bandwidth - downstreamPrelim) / (YourService.SET_TIMER / SECONDS_IN_MS)
             writeToFile("Download Bandwidth " + convert_format(down_inter_bandwidth.toDouble()))
-            Log.v(
-                "GetValues",
-                "Download Bandwidth " + down_inter_bandwidth + " converted to " + convert_format(
-                    down_inter_bandwidth.toDouble()
-                )
-            )
+           // Log.v(
+             //   "GetValues",
+               // "Download Bandwidth " + down_inter_bandwidth + " converted to " + convert_format(
+                //    down_inter_bandwidth.toDouble()
+                //)
+           //
+            // )
             downstreamPrelim = down_bandwidth
             //if(this.service == Constants.Type.CLIENT)
             reqdQueue.add(convert_format(down_inter_bandwidth.toDouble()))
@@ -172,12 +178,12 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
             val up_inter_bandwidth: Long =
                 (up_bandwidth - upstreamPrelim) / (YourService.SET_TIMER / SECONDS_IN_MS)
             writeToFile("Upload Bandwidth " + convert_format(up_inter_bandwidth.toDouble()))
-            Log.v(
-                "GetValues",
-                "Upload Bandwidth " + up_inter_bandwidth + " converted to " + convert_format(
-                    up_inter_bandwidth.toDouble()
-                )
-            )
+            //Log.v(
+              //  "GetValues",
+                //"Upload Bandwidth " + up_inter_bandwidth + " converted to " + convert_format(
+                  //  up_inter_bandwidth.toDouble()
+               // )
+            //)
             upstreamPrelim = up_bandwidth
             //if(this.service == Constants.Type.SERVER)
             //    reqdQueue.add(convert_format(up_inter_bandwidth));
@@ -202,8 +208,8 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
             if (reqdQueue.size <= 1) {
                 value = currentTime + diffTime
             } else {
-                val newElement = reqdQueue[1].split("\\s+").toTypedArray()
-                val prevElement = reqdQueue[0].split("\\s+").toTypedArray()
+                val newElement = reqdQueue[1].split(" ").toTypedArray()
+                val prevElement = reqdQueue[0].split(" ").toTypedArray()
                 val newValue = newElement[0].toFloat()
                 val oldValue = prevElement[0].toFloat()
                 if (newValue > oldValue) {
@@ -234,10 +240,7 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
                         value = currentTime + diffTime
                         movingDown = false
                         maximum = oldValue
-                        Log.v(
-                            TAG,
-                            "max is set to$maximum"
-                        )
+                        //Log.v(TAG, "max is set to$maximum" )
                     }
                     if (prevElement[1] == "KB/s" && newElement[1] == "KB/s") {
                         if (newValue > maximum) {
@@ -275,17 +278,103 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
             writeToFile("Type of connection $type_connection")
         }// null for client
 
-    // Get battery level must always be placed before energy.
 
+    // return 0 if any pb occurs
+    private fun readSystemFileAsInt(path: String): Int {
+        var ret = 0
+        try {
+            val reader = RandomAccessFile(path, "r")
+            ret = try {
+                val line = reader.readLine()
+                line.toInt()
+            } finally {
+                reader.close()
+            }
+        } catch (ex: Exception) {
+            ex.printStackTrace()
+        }
+        return ret
+    }
+
+    // This function returns the total number of cores.
+    private fun getNumCores(): Int {
+        //Private Class to display only CPU devices in the directory listing
+        class CpuFilter : FileFilter {
+            override fun accept(pathname: File): Boolean {
+                //Check if filename is "cpu", followed by a single digit number
+                return Pattern.matches("cpu[0-9]+", pathname.name)
+            }
+        }
+        return try {
+            //Get directory containing CPU info
+            val dir = File("/sys/devices/system/cpu/")
+            //Filter to only list the devices we care about
+            val files: Array<File> = dir.listFiles(CpuFilter())
+            //Return the number of cores (virtual CPU devices)
+            files.size
+        } catch (e: Exception) {
+            //Default to return 1 core
+            1
+        }
+    }
+
+    @Synchronized
+    fun getCoresUsageGuessFromFreq(){
+        // Gets the number of cores, minimum and maximum frequencies.
+        nCores = getNumCores()
+        getMinMaxFreq()
+        getCPUCurrentFrequency()
+
+        var value = 0
+        var totalUsage = 0.0f
+        // Calculate the average usage
+        for (i in 0 until nCores) {
+            if (maximumValue[i] > 0 && output[i] > 0 && maximumValue[i] - minimumValue[i] > 0)
+                value = (output[i] - minimumValue[i]) * 100 / (maximumValue[i] - minimumValue[i])
+                totalUsage += value
+                writeToFile("CPU $i usage $value")
+               //Log.v(TAG, "Usage of CPU $i is $value")
+        }
+
+        writeToFile("Total CPU utilised ${totalUsage / nCores}")
+        Log.v(TAG, "Total CPU utilised ${totalUsage / nCores}")
+    }
+
+    // This function returns the current, minimum and maximum frequencies of the CPU.
+    @Throws(Exception::class)
+    private fun getCPUCurrentFrequency(){
+
+        output = IntArray(getNumCores())
+        for (i in 0 until getNumCores()) {
+            output[i] =
+                readSystemFileAsInt("/sys/devices/system/cpu/cpu$i/cpufreq/scaling_cur_freq")
+        }
+    }
+
+    private fun getMinMaxFreq(){
+        minimumValue = IntArray(getNumCores())
+        maximumValue = IntArray(getNumCores())
+        for (i in 0 until getNumCores()){
+            minimumValue[i] =
+                readSystemFileAsInt("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_min_freq")
+            maximumValue[i] =
+                readSystemFileAsInt("/sys/devices/system/cpu/cpu$i/cpufreq/cpuinfo_max_freq")
+        }
+    }
+
+
+    // Get battery level must always be placed before energy.
     // Can return the stack to the system
     fun values(multiplePhones: Boolean = true):LatencyTimeTuple? {
-        getEnergyLevel(batteryLevel)
+        var battery = batteryLevel()
+        getEnergyLevel(battery)
         isCharging
         connectionType
+        getCoresUsageGuessFromFreq()
 
         if (multiplePhones) {
             currentTime = systemTime()
-            Log.v(TAG, "Current time : " + stringTime(currentTime))
+            //Log.v(TAG, "Current time : " + stringTime(currentTime))
             bandwidthUp
             bandwidthDown
             // Can return the stack to the system
