@@ -22,7 +22,6 @@ import java.lang.Exception
 import java.net.InetAddress
 import java.net.UnknownHostException
 import java.nio.ByteBuffer
-import java.text.SimpleDateFormat
 import java.util.*
 import java.util.regex.Pattern
 import kotlin.collections.ArrayList
@@ -40,20 +39,20 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
     private var batteryStatus: Intent?
     private var outputStream: FileOutputStream? = null
     private var writer: PrintWriter? = null
-    var file: File
-    var downstreamPrelim: Long
-    var upstreamPrelim: Long
-    val networkQueue: NetworkQueue?
+    private var file: File
+    private var downstreamPrelim: Long
+    private var upstreamPrelim: Long
+    private val networkQueue: NetworkQueue?
 
     // These variables are created for detecting the bandwidth gap in latency.
-    var startTime = Stack<Long>()
-    var endTime = Stack<Long>()
+    private var startTime = Stack<Long>()
+    private var endTime = Stack<Long>()
     private var reqdQueue: MutableList<String> = ArrayList()
     private var low_limit = 0f
     private var up_limit = 0f
-    var maximum = 0f
-    var movingUp = false
-    var movingDown = false
+    private var maximum = 0f
+    private var movingUp = false
+    private var movingDown = false
     private var service: Constants.Type
     private var value: Long = 0
 
@@ -67,7 +66,7 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
     private var nCores: Int = 0
 
     // Writes to a file
-    fun writeToFile(data: String) {
+    private fun writeToFile(data: String) {
         try {
             outputStream = FileOutputStream(file, true)
             writer = PrintWriter(outputStream)
@@ -85,7 +84,7 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
     }
 
     // Finds the current battery level
-    fun batteryLevel(): Int{
+    private fun batteryLevel(): Int{
             // This does not change the battery value all time.
             //val level = batteryStatus!!.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
             //val scale = batteryStatus!!.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
@@ -381,7 +380,7 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
             val latencyTimeTuple: LatencyTimeTuple? = latency
             if (service === Constants.Type.SERVER) {
                 assert(latencyTimeTuple == null)
-                var lastLatencyTime: LatencyTimeTuple? = null
+                val lastLatencyTime: LatencyTimeTuple?
                 if (networkQueue != null && networkQueue.queue.size > 0) { // null for client
                     lastLatencyTime = networkQueue.queue.peek()
                     networkQueue.queue.remove()
@@ -411,10 +410,10 @@ class GetValues<NTPTime> @RequiresApi(api = Build.VERSION_CODES.M) constructor(
         var TAG = "Get Values"
         const val TIME_SERVER = "time-a.nist.gov"
         private const val SECONDS_IN_MS = 1000
-        fun stringTime(timeRecv: Long): String {
-            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            return sdf.format(timeRecv)
-        }
+//        fun stringTime(timeRecv: Long): String {
+//            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+//            return sdf.format(timeRecv)
+//        }
 
         // This function returns NTP time
         fun NTPTime(): Long {
