@@ -18,4 +18,4 @@ The following multiple phones characteristics are observed,
 
 **NOTE: The latency of an operation (Time taken for a certain operation on one phone to reflect on the other) is calculated using bandwidth and is done with justaline 2.0 in mind. (Based on requirement this can be changed).**
 
-**The JAVA code is in ARCharacterisits.**
+**The JAVA code is in AppProfiler.**
